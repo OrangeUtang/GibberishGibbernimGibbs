@@ -87,9 +87,9 @@ def login():
         return make_response(jsonify({"code": 403, "msg": "Cannot login, invalid password"}), 403)
 
 
-@app.route("/logout")
+@app.route("/logout", methods=['GET', 'POST'])
+@login_required
 def logout():
-    print(current_user)
     logout_user()
     return jsonify({"code": 200, "msg": "success"})
 
@@ -120,7 +120,7 @@ def create_new_Album():
         return make_response(jsonify({"code": 403, "msg": "Cannot create a second album with that name."}), 403)
 
     # if valid, add to db
-    album = Album(name=name, password=person_id)
+    album = Album(name=name, person_id=person_id)
     db.session.add(album)
     db.session.commit()
 
