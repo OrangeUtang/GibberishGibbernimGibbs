@@ -93,11 +93,55 @@ class TestPerson(unittest.TestCase):
 
     def test_logout_notLogged(self):
         response = self.app.post("/logout")
-        self.assertEqual(response.status_code, 405)
+        self.assertEqual(response.status_code, 302)
 
     def test_add_Album(self):
+        response = self.app.post("/login", data={"name": "Bob", "password": "Bob123"})
+        self.assertEqual(response.status_code, 200)
+
+        init_alb_count = Album.query.count()
+
+        response = self.app.post("/createAlbum", data={"name": "Summer"})
+        self.assertEqual(response.status_code, 200)
+
+        updated_count = Album.query.count()
+        self.assertEqual(updated_count, init_alb_count + 1)
+
+    def test_add_Album_invalid(self):
         response = self.app.post("/login", data={"name": "Alice", "password": "Alice123"})
         self.assertEqual(response.status_code, 200)
 
-        response = self.app.post("/createAlbum", data={"name": "Summer", "b": ""})
+        init_alb_count = Album.query.count()
+
+        # lacking data
+        response = self.app.post("/createAlbum")
+        self.assertEqual(response.status_code, 403)
+
+        # should succeed
+        response = self.app.post("/createAlbum", data={"name": "Summer"})
         self.assertEqual(response.status_code, 200)
+
+        # should be invalid because same person has 2 album with same name
+        response = self.app.post("/createAlbum", data={"name": "Summer"})
+        self.assertEqual(response.status_code, 403)
+
+        updated_count = Album.query.count()
+        self.assertEqual(updated_count, init_alb_count + 1)
+
+    def test_display_all_album(self):
+        response = self.app.post("/register", data={"name": "Paul", "password": "Paul123"})
+        self.assertEqual(response.status_code, 200)
+
+        response = self.app.post("/login", data={"name": "Paul", "password": "Paul123"})
+        self.assertEqual(response.status_code, 200)
+
+        response = self.app.post("/createAlbum", data={"name": "Album1"})
+        self.assertEqual(response.status_code, 200)
+
+        response = self.app.post("/createAlbum", data={"name": "Album2"})
+        self.assertEqual(response.status_code, 200)
+
+        response = self.app.get("/album")
+        album_list = json.loads(str(response.data, "utf8"))
+        self.assertEqual(album_list[0], {"id": "1", "name": "Album1", "person_id": "3"})
+        self.assertEqual(album_list[1], {"id": "2", "name": "Album2", "person_id": "3"})
