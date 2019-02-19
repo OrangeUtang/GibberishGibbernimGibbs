@@ -125,6 +125,7 @@ class TestPerson(unittest.TestCase):
         response = self.app.post("/createAlbum", data={"name": "Summer"})
         self.assertEqual(response.status_code, 403)
 
+        # should have only 1 added album
         updated_count = Album.query.count()
         self.assertEqual(updated_count, init_alb_count + 1)
 
@@ -145,3 +146,30 @@ class TestPerson(unittest.TestCase):
         album_list = json.loads(str(response.data, "utf8"))
         self.assertEqual(album_list[0], {"id": "1", "name": "Album1", "person_id": "3"})
         self.assertEqual(album_list[1], {"id": "2", "name": "Album2", "person_id": "3"})
+
+    def test_display_one_album(self):
+        response = self.app.post("/register", data={"name": "testAlb", "password": "testAlb123"})
+        self.assertEqual(response.status_code, 200)
+
+        response = self.app.post("/login", data={"name": "testAlb", "password": "testAlb123"})
+        self.assertEqual(response.status_code, 200)
+
+        response = self.app.post("/createAlbum", data={"name": "Album3"})
+        self.assertEqual(response.status_code, 200)
+
+        response = self.app.get("/album/1")
+        album = json.loads(str(response.data, "utf8"))
+        self.assertEqual(album, {"id": "1", "name": "Album3", "person_id": "3"})
+
+    def test_add_pic(self):
+        response = self.app.post("/register", data={"name": "PicTest", "password": "PicTest123"})
+        self.assertEqual(response.status_code, 200)
+
+        response = self.app.post("/login", data={"name": "PicTest", "password": "PicTest123"})
+        self.assertEqual(response.status_code, 200)
+
+        response = self.app.post("/createAlbum", data={"name": "Album1"})
+        self.assertEqual(response.status_code, 200)
+
+        response = self.app.post("/createAlbum", data={"name": "Album1"})
+        self.assertEqual(response.status_code, 200)
