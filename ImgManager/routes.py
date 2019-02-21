@@ -122,9 +122,9 @@ def get_all_pictures():
 @app.route("/picture/<picture_id>", methods={'GET'})
 def get_picture(picture_id):
     # id is a primary key, so we'll have max 1 result row
-    album = Album.query.filter_by(id=picture_id).first()
-    if album:
-        return jsonify(row2dict(album))
+    picture = Picture.query.filter_by(id=picture_id).first()
+    if picture:
+        return jsonify(row2dict(picture))
     else:
         return make_response(jsonify({"code": 404, "msg": "Cannot find this picture id."}), 404)
 
@@ -139,8 +139,8 @@ def create_new_album():
     if not name or not person_id:
         return make_response(jsonify({"code": 403, "msg": "Cannot put person. Missing mandatory fields."}), 403)
 
-    # if Album.query.filter_by(name=name).first():
-    #    return make_response(jsonify({"code": 403, "msg": "Cannot create a second album with that name."}), 403)
+    if Album.query.filter_by(name=name).first():
+        return make_response(jsonify({"code": 403, "msg": "Cannot create a second album with that name."}), 403)
 
     # if valid, add to db
     album = Album(name=name, person_id=person_id)
