@@ -151,15 +151,15 @@ class TestPerson(unittest.TestCase):
         response = self.app.post("/login", data={"name": "Paul", "password": "Paul123"})
         self.assertEqual(response.status_code, 200)
 
-        response = self.app.post("/createAlbum", data={"name": "Album1"})
+        response = self.app.post("/createAlbum", data={"name": "Album2"})
         self.assertEqual(response.status_code, 200)
 
-        response = self.app.post("/createAlbum", data={"name": "Album2"})
+        response = self.app.post("/createAlbum", data={"name": "Album3"})
         self.assertEqual(response.status_code, 200)
 
         response = self.app.get("/album")
         album_list = json.loads(str(response.data, "utf8"))
-        self.assertEqual(album_list[0], {"id": "1", "name": "Album1", "person_id": "3"})
+        self.assertEqual(album_list[0], {"id": "1", "name": "Album1", "person_id": "2"})
         self.assertEqual(album_list[1], {"id": "2", "name": "Album2", "person_id": "3"})
 
     def test_display_one_album(self):
@@ -172,9 +172,9 @@ class TestPerson(unittest.TestCase):
         response = self.app.post("/createAlbum", data={"name": "Album3"})
         self.assertEqual(response.status_code, 200)
 
-        response = self.app.get("/album/1")
+        response = self.app.get("/album/2")
         album = json.loads(str(response.data, "utf8"))
-        self.assertEqual(album, {"id": "1", "name": "Album3", "person_id": "3"})
+        self.assertEqual(album, {"id": "2", "name": "Album3", "person_id": "3"})
 
     def test_add_pic(self):
         init_pic_count = Picture.query.count()
@@ -205,23 +205,19 @@ class TestPerson(unittest.TestCase):
         self.assertEqual(init_pic_count+1, pic_count)
 
     def test_display_all_pic(self):
-        response = self.app.get("/picture/1")
+        response = self.app.get("/pictures")
         picture_list = json.loads(str(response.data, "utf8"))
-        self.assertEqual(picture_list[0], {"id": "1", "name": "test_img", "album_id": "1",
-                                           "path": 'C:\\Users\\joedu\\Desktop\SOEN487_A1\\ImgManager\\pictures\\test_img.jpg'})
-
-        self.assertEqual(picture_list[1], {"id": "2", "name": "test_img2", "album_id": "1",
-                                           "path": 'C:\\Users\joedu\\Desktop\\SOEN487_A1\\ImgManager\\pictures\\test_img2.jpg'})
+        self.assertEqual(picture_list[0], {"id": "1", "name": "tst_img", "album_id": "1", "path": 'C:\\Users\\joedu\\Desktop\SOEN487_A1\\ImgManager\\pictures\\test_img.jpg'})
+        self.assertEqual(picture_list[1], {"id": "2", "name": "tst_img2", "album_id": "1", "path": 'C:\\Users\joedu\\Desktop\\SOEN487_A1\\ImgManager\\pictures\\test_img2.jpg'})
 
     def test_get_picture(self):
         # send the request and check the response status code
-        response = self.app.get("/person/1")
+        response = self.app.get("/picture/1")
         self.assertEqual(response.status_code, 200)
 
         # convert the response data from json and call the asserts
         picture = json.loads(str(response.data, "utf8"))
-        self.assertDictEqual(picture, {"id": "1", "name": "test_img", "album_id": "1",
-                                      "path": 'C:\\Users\\joedu\\Desktop\SOEN487_A1\\ImgManager\\pictures\\test_img.jpg'})
+        self.assertDictEqual(picture, {"id": "1", "name": "tst_img", "album_id": "1", "path": 'C:\\Users\\joedu\\Desktop\SOEN487_A1\\ImgManager\\pictures\\test_img.jpg'})
 
     def test_add_pic_OtherAlbum(self):
         response = self.app.post("/register", data={"name": "PicTest", "password": "PicTest123"})
