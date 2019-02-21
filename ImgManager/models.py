@@ -6,10 +6,6 @@ def row2dict(row):
     return {c.name: str(getattr(row, c.name)) for c in row.__table__.columns if c.name is not "password"}
 
 
-def player_row2dict(row):
-    return {}
-
-
 @login_manager.user_loader
 def load_user(user_id):
     return Person.query.get(int(user_id))

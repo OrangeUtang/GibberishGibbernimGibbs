@@ -1,5 +1,8 @@
 from flask_sqlalchemy import SQLAlchemy
 import sqlalchemy
+import secrets
+import os
+from PIL import Image
 from flask import jsonify, make_response, request
 from ImgManager import app, db, bcrypt
 from ImgManager.models import row2dict, Person, Album, Picture
@@ -100,15 +103,35 @@ def get_all_album():
     return jsonify([row2dict(album) for album in album_list])
 
 
+@app.route("/album/<album_id>", methods={'GET'})
+def get_album(album_id):
+    # id is a primary key, so we'll have max 1 result row
+    album = Album.query.filter_by(id=album_id).first()
+    if album:
+        return jsonify(row2dict(album))
+    else:
+        return make_response(jsonify({"code": 404, "msg": "Cannot find this album id."}), 404)
+
+
 @app.route("/pictures", methods={'GET'})
 def get_all_pictures():
     picture_list = Picture.query.all()
     return jsonify([row2dict(picture) for picture in picture_list])
 
 
+@app.route("/picture/<picture_id>", methods={'GET'})
+def get_picture(picture_id):
+    # id is a primary key, so we'll have max 1 result row
+    album = Album.query.filter_by(id=picture_id).first()
+    if album:
+        return jsonify(row2dict(album))
+    else:
+        return make_response(jsonify({"code": 404, "msg": "Cannot find this picture id."}), 404)
+
+
 @app.route("/createAlbum", methods={'POST'})
 @login_required
-def create_new_Album():
+def create_new_album():
     # getting request info
     name = request.form.get("name")
     person_id = current_user.id
@@ -116,8 +139,8 @@ def create_new_Album():
     if not name or not person_id:
         return make_response(jsonify({"code": 403, "msg": "Cannot put person. Missing mandatory fields."}), 403)
 
-    if Album.query.filter_by(name=name).first():
-        return make_response(jsonify({"code": 403, "msg": "Cannot create a second album with that name."}), 403)
+    # if Album.query.filter_by(name=name).first():
+    #    return make_response(jsonify({"code": 403, "msg": "Cannot create a second album with that name."}), 403)
 
     # if valid, add to db
     album = Album(name=name, person_id=person_id)
@@ -125,6 +148,69 @@ def create_new_Album():
     db.session.commit()
 
     return jsonify({"code": 200, "msg": "success"})
+
+
+@app.route("/Album/<album_id>/addPicture", methods=['POST', 'GET'])
+@login_required
+def add_pic(album_id):
+
+    album_owner_id = Album.query.filter_by(id=album_id).first()
+    if album_owner_id.person_id is not current_user.id:
+        return make_response(jsonify({"code": 403, "msg": "Cannot add picture to albums you don't own"}), 403)
+
+    # taken from Corey M. Schafer code snippets
+    form_picture = request.files['image']
+    name = request.form.get("name")
+
+    if not name or not form_picture:
+        return make_response(jsonify({"code": 403, "msg": "Invalid fields"}), 403)
+
+    random_hex = secrets.token_hex(8)
+    _, f_ext = os.path.splitext(form_picture.filename)
+    picture_fn = random_hex + f_ext
+    picture_path = os.path.join(app.root_path + '\pictures', picture_fn)
+    #output_size = (125, 125)
+    i = Image.open(form_picture)
+    #i.thumbnail(output_size)
+    i.save(picture_path)
+
+    new_pic = Picture(name=name, album_id=album_id, path=picture_path)
+    db.session.add(new_pic)
+    db.session.commit()
+
+    return jsonify({"code": 200, "msg": "success"})
+
+
+@app.route("/picture/<pic_id>", methods={'GET'})
+def show_one_pic(pic_id):
+    picture = Picture.query.filter_by(id=pic_id).first()
+    if picture:
+        return jsonify(row2dict(picture))
+    else:
+        return make_response(jsonify({"code": 404, "msg": "Cannot find this person id."}), 404)
+
+
+@app.route("/picture/Album/<album_id>", methods={'GET'})
+@login_required
+def get_pic_by_album(album_id):
+    todo = True
+
+
+@app.route("/deletePic/<pic_id>")
+@login_required
+def delete_pic(pic_id):
+    todo = True
+
+
+@app.route("/deleteAlbum/<album_id>")
+@login_required
+def delete_alb(album_id):
+    rodo = True
+
+
+@app.route("/deleteUser")
+def delete_user():
+    todo = True
 
 
 @app.route("/test")
