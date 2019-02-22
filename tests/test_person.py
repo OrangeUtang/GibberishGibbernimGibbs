@@ -4,19 +4,19 @@ import io
 import os
 from ImgManager import app as tested_app
 from ImgManager import db as tested_db
-from ImgManager.config import TestConfig
 from ImgManager.models import Person, Album, Picture
 
-#tested_app.config.from_object(TestConfig)
+# tested_app.config.from_object(TestConfig)
+
 
 class TestPerson(unittest.TestCase):
     def setUp(self):
         # set up the test DB
         self.db = tested_db
         self.db.create_all()
-
         self.app = tested_app.test_client()
 
+        # Setting up some testing Data
         self.app.post("/register", data={"name": "Alice", "password": "Alice123"})
         self.app.post("/register", data={"name": "Bob", "password": "Bob123"})
 
@@ -31,8 +31,6 @@ class TestPerson(unittest.TestCase):
         self.db.session.add(new_pic)
         self.db.session.add(new_pic2)
         self.db.session.commit()
-
-
 
     def tearDown(self):
         # clean up the DB after the tests
@@ -188,17 +186,13 @@ class TestPerson(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
 
         with open('test_img.jpg', 'rb') as img1:
-            # imgBytesIO = io.BytesIO(img1.read())
-
             try:
-                # img = img1.read()
                 imgBytesIO = io.BytesIO(img1.read())
             except:
                 print("File can't be read.")
 
         response = self.app.post('/Album/2/addPicture', content_type='multipart/form-data',
                                  data={'image': (imgBytesIO, 'test_img.jpg'), 'name': 'testImg1'})
-
         self.assertEqual(response.status_code, 200)
 
         pic_count = Picture.query.count()
@@ -230,17 +224,103 @@ class TestPerson(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
 
         with open('test_img.jpg', 'rb') as img1:
-            # imgBytesIO = io.BytesIO(img1.read())
-
             try:
-                # img = img1.read()
                 imgBytesIO = io.BytesIO(img1.read())
-                print(imgBytesIO)
             except:
                 print("File can't be read.")
 
         response = self.app.post('/Album/1/addPicture', content_type='multipart/form-data',
                                  data={'image': (imgBytesIO, 'test_img.jpg'), 'name': 'testImg1'})
-
         self.assertEqual(response.status_code, 403)
 
+    def test_delete_pic(self):
+        init_pic_count = Picture.query.count()
+        response = self.app.post("/login", data={"name": "Bob", "password": "Bob123"})
+        self.assertEqual(response.status_code, 200)
+
+        response = self.app.get("/deletePic/1")
+        self.assertEqual(response.status_code, 200)
+
+        final_pic_count = Picture.query.count()
+        self.assertEqual(init_pic_count - 1, final_pic_count)
+        self.assertEqual(False, os.path.exists('C:\\Users\\joedu\\Desktop\SOEN487_A1\\ImgManager\\pictures\\test_img.jpg'))
+
+    def test_delete_invalid_pic(self):
+        response = self.app.post("/register", data={"name": "deletePicTest", "password": "deletePicTest123"})
+        self.assertEqual(response.status_code, 200)
+
+        response = self.app.post("/login", data={"name": "deletePicTest", "password": "deletePicTest123"})
+        self.assertEqual(response.status_code, 200)
+
+        response = self.app.get("/deletePic/1")
+        self.assertEqual(response.status_code, 404)
+
+    def test_delete_pic_dont_exists(self):
+        response = self.app.post("/register", data={"name": "deletePicTest", "password": "deletePicTest123"})
+        self.assertEqual(response.status_code, 200)
+
+        response = self.app.post("/login", data={"name": "deletePicTest", "password": "deletePicTest123"})
+        self.assertEqual(response.status_code, 200)
+
+        response = self.app.get("/deletePic/10000000")
+        self.assertEqual(response.status_code, 404)
+
+    def test_display_album(self):
+        response = self.app.get("/picture/Album/1")
+        picture_list = json.loads(str(response.data, "utf8"))
+        self.assertEqual(picture_list[0], {"id": "1", "name": "tst_img", "album_id": "1",
+                                           "path": 'C:\\Users\\joedu\\Desktop\SOEN487_A1\\ImgManager\\pictures\\test_img.jpg'})
+        self.assertEqual(picture_list[1], {"id": "2", "name": "tst_img2", "album_id": "1",
+                                           "path": 'C:\\Users\joedu\\Desktop\\SOEN487_A1\\ImgManager\\pictures\\test_img2.jpg'})
+
+    def test_display_album_invalid_id(self):
+        response = self.app.get("/picture/Album/100000")
+        self.assertEqual(response.status_code, 404)
+
+    def test_delete_album_invalid_id(self):
+        response = self.app.post("/register", data={"name": "deletePicTest", "password": "deletePicTest123"})
+        self.assertEqual(response.status_code, 200)
+
+        response = self.app.post("/login", data={"name": "deletePicTest", "password": "deletePicTest123"})
+        self.assertEqual(response.status_code, 200)
+
+        response = self.app.post("/deleteAlbum/1")
+        self.assertEqual(response.status_code, 404)
+
+    def test_delete_album(self):
+        response = self.app.post("/register", data={"name": "deletePicTest", "password": "deletePicTest123"})
+        self.assertEqual(response.status_code, 200)
+
+        response = self.app.post("/login", data={"name": "deletePicTest", "password": "deletePicTest123"})
+        self.assertEqual(response.status_code, 200)
+
+        response = self.app.post("/createAlbum", data={"name": "Album2"})
+        self.assertEqual(response.status_code, 200)
+
+        with open('test_img.jpg', 'rb') as img1:
+            try:
+                imgBytesIO = io.BytesIO(img1.read())
+            except:
+                print("File can't be read.")
+
+        response = self.app.post('/Album/2/addPicture', content_type='multipart/form-data',
+                                 data={'image': (imgBytesIO, 'test_img.jpg'), 'name': 'testImg1'})
+        self.assertEqual(response.status_code, 200)
+
+        with open('test_img.jpg', 'rb') as img1:
+            try:
+                imgBytesIO = io.BytesIO(img1.read())
+            except:
+                print("File can't be read.")
+
+        response = self.app.post('/Album/2/addPicture', content_type='multipart/form-data',
+                                 data={'image': (imgBytesIO, 'test_img.jpg'), 'name': 'testImg2'})
+        self.assertEqual(response.status_code, 200)
+
+        init_pic_count = Picture.query.count()
+
+        response = self.app.post("/deleteAlbum/2")
+        self.assertEqual(response.status_code, 200)
+
+        pic_count = Picture.query.count()
+        self.assertEqual(init_pic_count - 2, pic_count)
