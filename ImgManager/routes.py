@@ -153,27 +153,34 @@ def create_new_album():
 @app.route("/Album/<album_id>/addPicture", methods=['POST', 'GET'])
 @login_required
 def add_pic(album_id):
-
+    # make sure its adding a pic to one of its own album
     album_owner_id = Album.query.filter_by(id=album_id).first()
     if album_owner_id.person_id is not current_user.id:
         return make_response(jsonify({"code": 403, "msg": "Cannot add picture to albums you don't own"}), 403)
 
-    # taken from Corey M. Schafer code snippets
     form_picture = request.files['image']
     name = request.form.get("name")
 
     if not name or not form_picture:
         return make_response(jsonify({"code": 403, "msg": "Invalid fields"}), 403)
 
+    # taken from Corey M. Schafer code snippets
     random_hex = secrets.token_hex(8)
     _, f_ext = os.path.splitext(form_picture.filename)
     picture_fn = random_hex + f_ext
     picture_path = os.path.join(app.root_path + '\pictures', picture_fn)
-    #output_size = (125, 125)
-    i = Image.open(form_picture)
-    #i.thumbnail(output_size)
-    i.save(picture_path)
 
+    # making sure the random hex hasn't already been produced
+    while os.path.exists(picture_path):
+        print("Creating new hex")
+        random_hex = secrets.token_hex(8)
+        _, f_ext = os.path.splitext(form_picture.filename)
+        picture_fn = random_hex + f_ext
+        picture_path = os.path.join(app.root_path + '\pictures', picture_fn)
+
+    # if valid save picture with a valid path
+    i = Image.open(form_picture)
+    i.save(picture_path)
     new_pic = Picture(name=name, album_id=album_id, path=picture_path)
     db.session.add(new_pic)
     db.session.commit()
@@ -191,34 +198,69 @@ def show_one_pic(pic_id):
 
 
 @app.route("/picture/Album/<album_id>", methods={'GET'})
-@login_required
 def get_pic_by_album(album_id):
-    todo = True
+    album = Album.query.filter_by(id=album_id).first()
+    pictures = Picture.query.filter_by(album_id=album_id)
+
+    if not pictures or not album:
+        return make_response(jsonify({"code": 404, "msg": "Cannot find this person id."}), 404)
+    else:
+        return jsonify([row2dict(picture) for picture in pictures])
 
 
-@app.route("/deletePic/<pic_id>")
+@app.route("/deletePic/<pic_id>", methods={'GET'})
 @login_required
 def delete_pic(pic_id):
-    todo = True
+    target_pic = Picture.query.filter_by(id=pic_id).first()
 
+    # check if picture exists
+    if not target_pic:
+        return make_response(jsonify({"code": 404, "msg": "Cannot find this person id."}), 404)
 
-@app.route("/deleteAlbum/<album_id>")
-@login_required
-def delete_alb(album_id):
-    rodo = True
+    # find the picture album
+    target_pic_albid = target_pic.album_id
+    target_pic_album = Album.query.filter_by(id=target_pic_albid).first()
 
+    # make sure the album belongs to the user
+    if not target_pic_album.person_id == current_user.id:
+        return make_response(jsonify({"code": 404, "msg": "Cannot find this person id."}), 404)
 
-@app.route("/deleteUser")
-def delete_user():
-    todo = True
+    if os.path.exists(target_pic.path):
+        try:
+            os.remove(target_pic.path)
+        except OSError:
+            pass
 
-
-@app.route("/test")
-def dbtest():
-    name = 'paul'
-    pw = "manafort"
-    hpw = bcrypt.generate_password_hash(pw).decode('utf-8')
-    user = Person(name=name, password=hpw)
-    db.session.add(user)
+    db.session.delete(target_pic)
     db.session.commit()
     return jsonify({"code": 200, "msg": "success"})
+
+
+@app.route("/deleteAlbum/<album_id>", methods={'POST'})
+@login_required
+def delete_alb(album_id):
+    album = Album.query.filter_by(id=album_id).first()
+
+    if not album:
+        return make_response(jsonify({"code": 404, "msg": "Cannot find this person id."}), 404)
+
+    if not album.person_id == current_user.id:
+        return make_response(jsonify({"code": 404, "msg": "Cannot comply."}), 404)
+
+    pictures = Picture.query.filter_by(album_id=album_id)
+
+    if pictures:
+        for picture in pictures:
+            print(picture.path)
+            if os.path.exists(picture.path):
+                try:
+                    os.remove(picture.path)
+                except OSError:
+                    pass
+            db.session.delete(picture)
+
+    db.session.delete(album)
+    db.session.commit()
+    return jsonify({"code": 200, "msg": "success"})
+
+
